@@ -37,6 +37,12 @@ fun finL f v = case f of
                | Three(a, b, c) => Four(v, a, b, c)
                | _ => raise BailOut
 
+fun finR f v = case f of
+                 One(a) => Two(a, v)
+               | Two(a,b) => Three(a,b,v)
+               | Three(a,b,c) => Four(a,b,c,v)
+               | _ => raise BailOut
+
 
 fun isEmpty Empty = true
   | isEmpty _ = false
@@ -59,12 +65,12 @@ local
   fun ftL (l,m,r) = FingerTree(l, m, r)
   fun ftR (l,m,r) = FingerTree(r, m, l)
   fun fswapR (l,r) = (r, l)
-  fun splitL (Four(a,b,c,d)) v = (Two(v, a), Three(b,c,d))
-  fun splitR (Four(a,b,c,d)) v = (Three(a,b,c), Two(d, v))
+  fun splitL (Four(a,b,c,d)) v z = (Two(v, a), Four(b,c,d,z))
+  fun splitR (Four(a,b,c,d)) v z = (Two(d, v), Four(z,a,b,c))
   fun nodeL  (Four(a,b,c,d)) v = (Three(v, a, b), Node(c, d))
   fun nodeR  (Four(a,b,c,d)) v = (Three(c, d, v), Node(a, b))
 
-  fun inserttFull ft fswap pop split node (FingerTree(fingerL, tree, fingerR)) v =
+  fun inserttFull ft fin fswap pop split node (FingerTree(fingerL, tree, fingerR)) v =
       let
         val (fingerL, fingerR) = fswap (fingerL, fingerR)
       in
@@ -72,28 +78,27 @@ local
            Four(a, b, c, d) =>
            let
              val (f, n) = node fingerL v
-             val tree' = insertt ft fswap pop split node tree n in
+             val tree' = insertt ft fin fswap pop split node tree n in
              ft(f, tree', fingerR)
            end
-         | l => ft(finL l v, tree, fingerR))
+         | l => ft(fin l v, tree, fingerR))
       end
-    | inserttFull _ _ _ _ _ _ _ = raise BailOut
-    (*inserttFull ft fswap pop split node tree v = insertt ft fswap pop split node tree v*)
-  and insertt ft fswap pop split node (Empty) v = Singleton(v)
-    | insertt ft fswap pop split node (Singleton(x)) v = ft(One(v), Empty, One(x))
-    | insertt ft fswap pop split node (tree as FingerTree(fingerL, Empty, fingerR)) v =
+    | inserttFull _ _ _ _ _ _ _ _ = raise BailOut
+  and insertt ft fin fswap pop split node (Empty) v = Singleton(v)
+    | insertt ft fin fswap pop split node (Singleton(x)) v = ft(One(v), Empty, One(x))
+    | insertt ft fin fswap pop split node (tree as FingerTree(fingerL, Empty, fingerR)) v =
       let
         val (fingerL, fingerR) = fswap (fingerL, fingerR)
       in
         case fingerR of
           One(z) =>
           (case fingerL of
-             Four(a, b, c, d) => let val (l,r) = split fingerL v
+             Four(a, b, c, d) => let val (l,r) = split fingerL v z
                                  in ft(l, Empty, r) end
-           | f => ft(finL f v, Empty, fingerR))
-        | _ => inserttFull ft fswap pop split node tree v
+           | f => ft(fin f v, Empty, fingerR)) (* refactor finL *)
+        | _ => inserttFull ft fin fswap pop split node tree v
       end
-    | insertt ft fswap pop split node tree v = inserttFull ft fswap pop split node tree v
+    | insertt ft fin fswap pop split node tree v = inserttFull ft fin fswap pop split node tree v
 
   fun viewt ft fswap pop Empty = raise BailOut
     | viewt ft fswap pop (Singleton(x)) = (x, Empty)
@@ -117,8 +122,8 @@ local
       end
 in
 
-fun insertL t v = insertt ftL id fpopL splitL nodeL t (Leaf(v))
-fun insertR t v = insertt ftR fswapR fpopR splitR nodeR t (Leaf(v))
+fun insertL t v = insertt ftL finL id fpopL splitL nodeL t (Leaf(v))
+fun insertR t v = insertt ftR finR fswapR fpopR splitR nodeR t (Leaf(v))
 val insert  = insertL
 
 fun pick (Leaf(x), t) = (x, t)
