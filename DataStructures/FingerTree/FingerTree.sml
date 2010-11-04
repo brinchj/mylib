@@ -56,27 +56,32 @@ fun fpopR f =
     | Four(a,b,c,d) => (d, SOME(Three(a,b,c)))
 
 local
-  fun insertL (Empty) v = Singleton(v)
-    | insertL (Singleton(x)) v = FingerTree(One(v), Empty, One(x))
-    | insertL (FingerTree(fingerL, Empty, (fingerR as One(z)))) v =
-      (case fingerL of
-         Four(a, b, c, d) => FingerTree(Two(v, a), Empty, Four(b, c, d, z))
-       | f => FingerTree(finL f v, Empty, fingerR))
-    | insertL (FingerTree(fingerL, tree, fingerR)) v =
-      (case fingerL of
-         Four(a, b, c, d) =>
-         let val tree' = insertL tree (Node(c, d)) in
-           FingerTree(Three(v, a, b), tree', fingerR)
-         end
-       | l => FingerTree(finL l v, tree, fingerR))
-in
-fun insert t v = insertL t (Leaf(v))
-end
-
-local
   fun ftL (l,m,r) = FingerTree(l, m, r)
   fun ftR (l,m,r) = FingerTree(r, m, l)
   fun fswapR (l,r) = (r, l)
+
+  fun insertt ft fswap (Empty) v = Singleton(v)
+    | insertt ft fswap (Singleton(x)) v = ft(One(v), Empty, One(x))
+    | insertt ft fswap (FingerTree(fingerL, Empty, (fingerR as One(z)))) v =
+      let
+        val (fingerL, fingerR) = fswap (fingerL, fingerR)
+      in
+        (case fingerL of
+           Four(a, b, c, d) => ft(Two(v, a), Empty, Four(b, c, d, z))
+         | f => ft(finL f v, Empty, fingerR))
+      end
+    | insertt ft fswap (FingerTree(fingerL, tree, fingerR)) v =
+      let
+        val (fingerL, fingerR) = fswap (fingerL, fingerR)
+      in
+        (case fingerL of
+           Four(a, b, c, d) =>
+           let val tree' = insertt ft fswap tree (Node(c, d)) in
+             ft(Three(v, a, b), tree', fingerR)
+           end
+         | l => ft(finL l v, tree, fingerR))
+      end
+
   fun viewt ft fswap pop Empty = raise BailOut
     | viewt ft fswap pop (Singleton(x)) = (x, Empty)
     | viewt ft fswap pop (FingerTree(fingerL, tree, fingerR)) =
@@ -98,10 +103,16 @@ local
         ))
       end
 in
+
+fun insertL t v = insertt ftL id t (Leaf(v))
+fun insertR t v = insertt ftR fswapR t (Leaf(v))
+val insert  = insertL
+
 fun pick (Leaf(x), t) = (x, t)
   | pick _ = raise BailOut
 fun viewL t = pick (viewt ftL id fpopL t)
 fun viewR t = pick (viewt ftR fswapR fpopR t)
+
 end
 
 local
