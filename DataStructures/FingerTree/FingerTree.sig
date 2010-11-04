@@ -22,6 +22,8 @@ sig
     val join : 'a -> 'a t list -> 'a t
 *)
     val insert : 'a t -> 'a -> 'a t
+    val insertL : 'a t -> 'a -> 'a t
+    val insertR : 'a t -> 'a -> 'a t
 (*
     val insertTree : 'a t -> 'a t -> 'a t
 
